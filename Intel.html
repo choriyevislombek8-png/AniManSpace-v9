@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+  <title>AniManSpace — Enter Your Anime Universe</title>
+  <!-- Google Font & Font Awesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* ----- RESET & GLOBAL ----- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #03050a;
+      color: #f0f3ff;
+      line-height: 1.6;
+      position: relative;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ----- CANVAS STARFIELD (animated + parallax) ----- */
+    #star-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, #0d071a 0%, #050210 70%, #000 100%);
+    }
+
+    /* ----- GLASS & NEON UTILS ----- */
+    .glass-card {
+      background: rgba(12, 15, 30, 0.65);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(157, 78, 221, 0.1), 0 0 20px rgba(0, 230, 230, 0.2);
+      transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(0, 230, 230, 0.6);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 255, 200, 0.4), 0 0 32px #4e00b3;
+      transform: translateY(-6px);
+    }
+
+    .neon-text {
+      text-shadow: 0 0 10px cyan, 0 0 20px #a855f7, 0 0 30px #3b82f6;
+    }
+
+    .glow-button {
+      background: rgba(20, 30, 50, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1.5px solid #00ffff;
+      color: white;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      transition: 0.25s;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .glow-button:hover {
+      background: rgba(0, 255, 255, 0.15);
+      border-color: #ff66ff;
+      box-shadow: 0 0 25px #ff66ff, 0 0 5px cyan;
+      transform: scale(1.05);
+      color: #fff;
+    }
+
+    /* ----- NAVIGATION (persistent glass) ----- */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 40px;
+      background: rgba(8, 10, 18, 0.7);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(0, 230, 230, 0.25);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(45deg, #a0f0ff, #d68eff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+      text-shadow: 0 0 15px #a855f7;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      font-weight: 600;
+    }
+
+    .nav-links a {
+      color: #dddaff;
+      text-decoration: none;
+      padding: 6px 6px;
+      border-bottom: 2px solid transparent;
+      transition: 0.2s;
+      font-size: 1rem;
+    }
+
+    .nav-links a:hover {
+      color: #fff;
+      border-bottom-color: #00ffff;
+      text-shadow: 0 0 8px cyan;
+    }
+
+    /* ----- PAGE SYSTEM (SPA) ----- */
+    .page {
+      display: none;
+      opacity: 0;
+      animation: fadeSlide 0.5s ease forwards;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeSlide {
+      0% { opacity: 0; transform: translateY(12px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ----- LAYOUT & CONTAINERS ----- */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 40px;
+    }
+
+    /* hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero h1 {
+      font-size: clamp(3rem, 12vw, 6rem);
+      font-weight: 800;
+      background: linear-gradient(to right, #b0f0ff, #ffaaff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      text-shadow: 0 0 40px #b200ff;
+    }
+
+    .hero-sub {
+      font-size: 1.7rem;
+      margin-bottom: 16px;
+      color: #e2dbff;
+      text-shadow: 0 0 15px violet;
+    }
+
+    .hero-desc {
+      max-width: 700px;
+      margin-bottom: 32px;
+      font-size: 1.2rem;
+      color: #cbd5e6;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* floating particles (hero only) */
+    .particle-field {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      background: rgba(255, 200, 255, 0.25);
+      border-radius: 50%;
+      filter: blur(8px);
+      animation: float 18s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      25% { transform: translateY(-30px) translateX(15px); }
+      75% { transform: translateY(20px) translateX(-20px); }
+    }
+
+    /* AI companion */
+    .ai-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      background: rgba(18, 15, 45, 0.6);
+      backdrop-filter: blur(18px);
+      border: 1.5px solid #b300ff;
+      border-radius: 40px;
+      padding: 30px;
+      margin: 60px 0;
+      box-shadow: 0 0 50px #5f00b3;
+    }
+
+    .ai-avatar {
+      flex: 1 1 200px;
+      display: flex;
+      justify-content: center;
+      font-size: 8rem;
+      color: #ffb3ff;
+      filter: drop-shadow(0 0 30px cyan);
+    }
+
+    .ai-speech {
+      flex: 2 1 300px;
+      background: rgba(70, 20, 120, 0.4);
+      backdrop-filter: blur(8px);
+      border-radius: 48px 48px 48px 8px;
+      padding: 28px;
+      border: 1px solid #ffaaff;
+      box-shadow: 0 0 30px #a844ff;
+    }
+
+    .ai-speech p {
+      font-size: 1.7rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    /* feature cards grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 30px;
+      margin: 50px 0;
+    }
+
+    .feature-item {
+      padding: 32px 20px;
+      text-align: center;
+      border-radius: 28px;
+    }
+
+    .feature-item i {
+      font-size: 3.5rem;
+      margin-bottom: 20px;
+      color: #a7f0ff;
+      text-shadow: 0 0 20px magenta;
+    }
+
+    /* trending grid */
+    .trending-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 24px;
+      margin: 40px 0;
+    }
+
+    .anime-card {
+      background: rgba(10, 8, 25, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 18px 12px;
+      border: 1px solid #3f3f8f;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    .anime-card:hover {
+      border-color: #ff66cc;
+      box-shadow: 0 0 30px #a020f0;
+      transform: scale(1.02);
+    }
+
+    .anime-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(145deg, #1e1a47, #2a1e4a);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: #93baff;
+      margin-bottom: 12px;
+    }
+
+    /* community section */
+    .community-chat-preview {
+      background: rgba(15, 10, 35, 0.65);
+      backdrop-filter: blur(16px);
+      border-radius: 36px;
+      padding: 32px;
+      margin: 50px 0;
+      border: 1px solid cyan;
+    }
+
+    .chat-message {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 0.5px dashed #6a6ab3;
+    }
+
+    /* profile page */
+    .profile-dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+      background: rgba(8, 6, 24, 0.6);
+      backdrop-filter: blur(20px);
+      border-radius: 48px;
+      padding: 40px;
+      margin-top: 40px;
+      border: 1px solid #c084fc;
+    }
+
+    .avatar-section {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+
+    .avatar-circle {
+      width: 110px;
+      height: 110px;
+      background: linear-gradient(145deg, #6b21ff, #b200ff);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      border: 3px solid cyan;
+      box-shadow: 0 0 40px #f0f;
+    }
+
+    .level-bar {
+      height: 18px;
+      background: #22203a;
+      border-radius: 40px;
+      width: 100%;
+      margin: 15px 0;
+      border: 1px solid cyan;
+    }
+
+    .level-progress {
+      width: 70%;
+      height: 18px;
+      background: linear-gradient(90deg, #0ff, #f0f);
+      border-radius: 40px;
+      box-shadow: 0 0 20px #0ff;
+    }
+
+    .badge-grid {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: #1a1a3a;
+      padding: 14px;
+      border-radius: 20px;
+      width: 90px;
+      text-align: center;
+    }
+
+    .badge i {
+      font-size: 2.2rem;
+    }
+
+    .badge.locked {
+      opacity: 0.45;
+      filter: grayscale(0.8);
+    }
+
+    /* AI CHAT page */
+    .chat-window {
+      max-width: 900px;
+      margin: 40px auto;
+      background: rgba(5, 3, 19, 0.7);
+      backdrop-filter: blur(24px);
+      border-radius: 48px;
+      padding: 30px;
+      border: 2px solid #b300ff;
+      box-shadow: 0 0 80px #6f00b3;
+    }
+
+    .message-bubble {
+      display: flex;
+      margin-bottom: 28px;
+    }
+
+    .bubble {
+      max-width: 70%;
+      padding: 16px 24px;
+      border-radius: 28px;
+      background: #1e1a44;
+    }
+
+    .bubble.user {
+      background: #005f73;
+      border-bottom-right-radius: 6px;
+      margin-left: auto;
+      border: 1px solid cyan;
+    }
+
+    .bubble.ai {
+      background: #3c096c;
+      border-bottom-left-radius: 6px;
+      border: 1px solid #ff88ff;
+    }
+
+    .chat-input-area {
+      display: flex;
+      margin-top: 30px;
+      gap: 16px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 18px 24px;
+      background: rgba(0,0,0,0.6);
+      border: 1.5px solid #00ccff;
+      border-radius: 60px;
+      color: white;
+      font-size: 1rem;
+    }
+
+    /* footer */
+    .footer {
+      margin-top: 100px;
+      background: rgba(6, 4, 18, 0.8);
+      backdrop-filter: blur(18px);
+      padding: 40px 30px;
+      border-radius: 48px 48px 0 0;
+      border-top: 1px solid #a55aff;
+    }
+
+    /* responsive */
+    @media (max-width: 800px) {
+      .container { padding: 16px; }
+      .top-nav { flex-direction: column; gap: 12px; }
+      .nav-links { flex-wrap: wrap; justify-content: center; gap: 16px; }
+      .hero h1 { font-size: 3.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PARALLAX STAR CANVAS (ANIMATED) -->
+  <canvas id="star-canvas"></canvas>
+
+  <!-- PERSISTENT GLASS NAVIGATION -->
+  <nav class="top-nav">
+    <div class="logo">⍟ AniManSpace</div>
+    <div class="nav-links">
+      <a href="#" data-page="home">Home</a>
+      <a href="#" data-page="home" data-section="trending">Anime</a>
+      <a href="#" data-page="home" data-section="trending">Manhwa</a>
+      <a href="#" data-page="home" data-section="community">Community Chat</a>
+      <a href="#">Offline</a>
+      <a href="#" data-page="profile">Profile</a>
+    </div>
+  </nav>
+
+  <!-- PAGE CONTAINER (SPA) -->
+  <div id="pages-container">
+    <!-- ========== HOME PAGE ========== -->
+    <div id="home-page" class="page active">
+      <main class="container">
+        <!-- HERO SECTION with floating particles -->
+        <section class="hero">
+          <div class="particle-field">
+            <div class="particle" style="width:200px; height:200px; top:10%; left:5%; background:rgba(180,0,255,0.08);"></div>
+            <div class="particle" style="width:300px; height:300px; bottom:0; right:0; background:rgba(0,200,255,0.04);"></div>
+            <div class="particle" style="width:150px; height:150px; top:40%; left:80%; background:rgba(255,80,255,0.1);"></div>
+          </div>
+          <h1>AniManSpace</h1>
+          <div class="hero-sub neon-text">Enter Your Anime Universe</div>
+          <p class="hero-desc">Stream anime, read manhwa, level up, and talk with your personal AI space guide.</p>
+          <div class="btn-group">
+            <button class="glow-button" onclick="switchPage('home'); scrollToSection('trending')"><i class="fas fa-play"></i> Start Exploring</button>
+            <button class="glow-button" onclick="switchPage('ai-chat')"><i class="fas fa-robot"></i> Talk to AI</button>
+          </div>
+        </section>
+
+        <!-- AI COMPANION CARD (space girl illustration) -->
+        <section class="ai-card">
+          <div class="ai-avatar">
+            <i class="fas fa-user-astronaut"></i>
+          </div>
+          <div class="ai-speech">
+            <p>🌌 Salom, kosmonavt 🌌 <br> Qaysi olamga sayohat qilamiz?</p>
+            <button class="glow-button" onclick="switchPage('ai-chat')"><i class="fas fa-comment-dots"></i> Open AI Chat</button>
+          </div>
+        </section>
+
+        <!-- FEATURE CARDS (3) -->
+        <div class="feature-grid">
+          <div class="feature-item glass-card">
+            <i class="fas fa-film"></i>
+            <h2 style="margin-bottom: 8px;">🎬 Anime Streaming</h2>
+            <p style="color: #b0d0ff;">Watch trending and classic anime in high quality.</p>
+          </div>
+          <div class="feature-item glass-card">
+            <i class="fas fa-book-open"></i>
+            <h2 style="margin-bottom: 8px;">📖 Manhwa Reader</h2>
+            <p style="color: #b0d0ff;">Smooth vertical scroll reader for your favorite series.</p>
+          </div>
+          <div class="feature-item glass-card">
+            <i class="fas fa-trophy"></i>
+            <h2 style="margin-bottom: 8px;">🎮 Level & Rewards</h2>
+            <p style="color: #b0d0ff;">Earn XP, unlock badges, and grow your anime journey.</p>
+          </div>
+        </div>
+
+        <!-- TRENDING ANIME GRID (6+ placeholders) -->
+        <h2 style="font-size: 2.2rem; margin-bottom: 8px;"><i class="fas fa-fire" style="color: #ff8866;"></i> TRENDING NOW</h2>
+        <div id="trending" class="trending-grid">
+          <div class="anime-card" onclick="openModal('Bleach: Thousand-Year Blood War')">
+            <div class="anime-poster">⚔️</div>
+            <h3>Bleach</h3>
+            <p style="color:#b3b3ff;">Thousand-Year Blood War • 12 eps</p>
+            <span>★★★★☆</span>
+          </div>
+          <div class="anime-card" onclick="openModal('Hanging')">
+            <div class="anime-poster">🌀</div>
+            <h3>Hanging</h3>
+            <p style="color:#b3b3ff;">Psychological thriller</p>
+            <span>★★★★☆</span>
+          </div>
+          <div class="anime-card" onclick="openModal('New Episodes: Born BS')">
+            <div class="anime-poster">✨</div>
+            <h3>New Episodes</h3>
+            <p>Épisode 3 • Born BS</p>
+            <span>★★★★☆</span>
+          </div>
+          <div class="anime-card" onclick="openModal('Demon Slayer')">
+            <div class="anime-poster">⚡</div>
+            <h3>Demon Slayer</h3>
+            <p>Swordsmith Village</p>
+            <span>★★★★★</span>
+          </div>
+          <div class="anime-card" onclick="openModal('Jujutsu Kaisen')">
+            <div class="anime-poster">👹</div>
+            <h3>Jujutsu Kaisen</h3>
+            <p>S2 • 23 eps</p>
+            <span>★★★★★</span>
+          </div>
+          <div class="anime-card" onclick="ope uinModal('Chainsaw Man')">
+            <div class="anime-poster">🪚</div>
+            <h3>Chainsaw Man</h3>
+            <p>12 eps</p>
+            <span>★★★★☆</span>
+          </div>
+        </div>
+
+        <!-- COMMUNITY / SOCIAL SECTION (with chat preview) -->
+        <section id="community" class="community-chat-preview">
+          <h2 style="font-size: 2.5rem; margin-bottom: 10px;">🌠 Join the AniManSpace Community</h2>
+          <p style="margin-bottom: 32px; font-size: 1.2rem;">Chat with anime fans, share recommendations, compete in weekly rankings.</p>
+          <div style="background: rgba(0,0,0,0.3); border-radius: 28px; padding: 24px; margin-bottom: 32px;">
+            <div class="chat-message"><strong style="color:#a0f0fa;">Isomm Sters</strong> <span style="color:#aaa;">19:85</span> <span style="margin-left: auto;">✧ just finished Bleach!</span></div>
+            <div class="chat-message"><strong style="color:#d69eff;">Orus</strong> <span style="color:#aaa;">12:16</span> <span style="margin-left: auto;">new manhwa chapter?</span></div>
+            <div class="chat-message"><strong style="color:#ffaeff;">Yukari</strong> <span style="color:#aaa;">12:16</span> <span style="margin-left: auto;">Lv:7 ⚡ kosmosga xabar yoz...</span></div>
+          </div>
+          <button class="glow-button" style="font-size: 1.2rem;"><i class="fas fa-users"></i> Join Community</button>
+        </section>
+
+        <!-- FOOTER (home) -->
+        <footer class="footer">
+          <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px;">
+            <div style="font-size: 2rem; font-weight: 800;">AniManSpace</div>
+            <div style="display: flex; gap: 30px;">
+              <a href="#" data-page="home" style="color: #ccc;">Home</a>
+              <a href="#" data-page="home" data-section="trending" style="color: #ccc;">Anime & Manhwa</a>
+              <a href="#" data-page="home" data-section="community" style="color: #ccc;">Community Chat</a>
+              <a href="#" style="color: #ccc;">Offline</a>
+              <a href="#" data-page="profile" style="color: #ccc;">Profile</a>
+            </div>
+          </div>
+          <div style="display: flex; gap: 30px; margin: 30px 0 20px;">
+            <i class="fab fa-discord" style="font-size: 1.7rem;"></i>
+            <i class="fab fa-twitter" style="font-size: 1.7rem;"></i>
+            <i class="fab fa-github" style="font-size: 1.7rem;"></i>
+            <i class="fab fa-reddit" style="font-size: 1.7rem;"></i>
+          </div>
+          <div style="border-top: 1px solid #666; padding-top: 24px;">© 2026 AniManSpace — born from stars</div>
+        </footer>
+      </main>
+    </div>
+
+    <!-- ========== AI CHAT PAGE (separate) ========== -->
+    <div id="ai-chat-page" class="page">
+      <div class="container" style="min-height: 100vh; display: flex; align-items: center;">
+        <div class="chat-window">
+          <h2 style="font-size: 2rem; margin-bottom: 24px;"><i class="fas fa-robot" style="color: cyan;"></i> AI Hamrohingiz</h2>
+          <div class="message-bubble">
+            <div class="bubble ai">🌙 Salom, kosmonavt! Men AniManSpace sun’iy hamrohingman. Qanday anime yoki manhwa qidiryapsiz?</div>
+          </div>
+          <div class="message-bubble">
+            <div class="bubble user">Salom! Menga sarguzasht anime taklif qila olasizmi?</div>
+          </div>
+          <div class="message-bubble">
+            <div class="bubble ai">Albatta! “Frieren: Beyond Journey’s End”, “Dungeon Meshi” yoki “Mushoku Tensei”ni tavsiya qilaman 🌟</div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Kosmosga xabar yoz..." value="Yangi epizod bormi?">
+            <button class="glow-button" style="padding: 12px 30px;"><i class="fas fa-paper-plane"></i></button>
+          </div>
+          <p style="margin-top: 20px; color: #bfaaff;">default: Salom 🌙 Men AniManSpace sun’iy hamrohingman.</p>
+        </div>
+      </div>
+      <footer class="footer" style="margin-top: 20px;">
+        <div style="text-align: center;">© 2026 AniManSpace — AI companion online</div>
+      </footer>
+    </div>
+
+    <!-- ========== PROFILE PAGE (Ragnarök) ========== -->
+    <div id="profile-page" class="page">
+      <div class="container">
+        <div class="profile-dashboard">
+          <div class="avatar-section">
+            <div class="avatar-circle">
+              <i class="fas fa-crown"></i>
+            </div>
+            <div>
+              <h1 style="font-size: 3rem; font-weight: 800;">Ragnarök</h1>
+              <p style="color: #b3aaff;">✦ lvl 24 · Space Voyager</p>
+            </div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>NEXT LEVEL</span> <span>1270 / 1800 XP</span>
+            </div>
+            <div class="level-bar">
+              <div class="level-progress" style="width: 70%;"></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content: space-around;">
+            <div style="text-align: center;"><i class="fas fa-tv" style="font-size: 2rem;"></i><br><span style="font-size: 1.8rem;">142</span><br>Watched</div>
+            <div style="text-align: center;"><i class="fas fa-book" style="font-size: 2rem;"></i><br><span style="font-size: 1.8rem;">89</span><br>Manhwa read</div>
+            <div style="text-align: center;"><i class="fas fa-calendar-check" style="font-size: 2rem;"></i><br><span style="font-size: 1.8rem;">12</span><br>Streak days</div>
+          </div>
+          <h2><i class="fas fa-medal"></i> Badges</h2>
+          <div class="badge-grid">
+            <div class="badge"><i class="fas fa-skull" style="color: gold;"></i><br>Hollow slayer</div>
+            <div class="badge"><i class="fas fa-dragon" style="color: silver;"></i><br>Manhwa addict</div>
+            <div class="badge"><i class="fas fa-star" style="color: cyan;"></i><br>First login</div>
+            <div class="badge locked"><i class="fas fa-lock"></i><br>Legend</div>
+            <div class="badge locked"><i class="fas fa-lock"></i><br>100 streak</div>
+          </div>
+          <button class="glow-button" style="margin-top: 20px;"><i class="fas fa-pen"></i> Edit profile</button>
+        </div>
+      </div>
+      <footer class="footer">
+        <div>© 2026 AniManSpace — Ragnarök's cosmos</div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- MODAL PREVIEW (placeholder) -->
+  <div id="modal-preview" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; z-index: 200; backdrop-filter: blur(10px);" onclick="this.style.display='none'">
+    <div style="background: #12102a; padding: 40px; border-radius: 48px; border: 3px solid cyan; max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
+      <h2 id="modal-title" style="margin-bottom: 20px;">Anime Preview</h2>
+      <div style="background: #322a5e; border-radius: 24px; padding: 30px;">
+        <i class="fas fa-play-circle" style="font-size: 4rem; color: #0ff;"></i>
+        <p style="margin-top: 16px;">🎬 UI placeholder — modal preview layout</p>
+      </div>
+      <button class="glow-button" style="margin-top: 30px;" onclick="document.getElementById('modal-preview').style.display='none'">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // ---------- SPA PAGE SWITCHING ----------
+    function switchPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      if (pageId === 'home') document.getElementById('home-page').classList.add('active');
+      if (pageId === 'ai-chat') document.getElementById('ai-chat-page').classList.add('active');
+      if (pageId === 'profile') document.getElementById('profile-page').classList.add('active');
+    }
+
+    function scrollToSection(section) {
+      switchPage('home');
+      setTimeout(() => {
+        if (section === 'trending') document.getElementById('trending')?.scrollIntoView({ behavior: 'smooth' });
+        if (section === 'community') document.getElementById('community')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+
+    // attach nav events
+    document.querySelectorAll('[data-page]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = link.dataset.page;
+        const section = link.dataset.section;
+        if (page === 'home') {
+          switchPage('home');
+          if (section) scrollToSection(section);
+        } else {
+          switchPage(page);
+        }
+      });
+    });
+
+    // ---------- MODAL (trending card click) ----------
+    window.openModal = function (title) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-preview').style.display = 'flex';
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.getElementById('modal-preview').style.display = 'none';
+    });
+
+    // ---------- DYNAMIC STARFIELD CANVAS (animated + parallax) ----------
+    const canvas = document.getElementById('star-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let stars = [];
+
+    function initStars(starCount = 300) {
+      stars = [];
+      for (let i = 0; i < starCount; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 1.8 + 0.8,
+          speed: Math.random() * 0.07 + 0.02,
+          glow: Math.random() * 0.8 + 0.3,
+        });
+      }
+    }
+
+    function drawStars() {
+      ctx.clearRect(0, 0, width, height);
+      for (let s of stars) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.shadowColor = s.radius > 1.2 ? '#aaddff' : '#c77dff';
+        ctx.shadowBlur = s.glow * 5;
+        ctx.fillStyle = `rgba(255, 235, 255, ${s.glow})`;
+        ctx.fill();
+      }
+      for (let s of stars) {
+        s.y += s.speed * 0.7;
+        if (s.y > height) {
+          s.y = 0;
+          s.x = Math.random() * width;
+        }
+      }
+      if (window.scrollY) {
+        let offset = window.scrollY * 0.02;
+        stars.forEach(s => s.y += offset * 0.01);
+      }
+      requestAnimationFrame(drawStars);
+    }
+
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+      initStars(400);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    drawStars();
+
+    // secondary nav for footer links
+    (function secondaryNav() {
+      const footerLinks = document.querySelectorAll('.footer a[data-page]');
+      footerLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const page = link.dataset.page;
+          const section = link.dataset.section;
+          if (page === 'home') {
+            switchPage('home');
+            if (section) scrollToSection(section);
+          } else {
+            switchPage(page);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
+```
